@@ -9,7 +9,8 @@
 @using System.Net
 @inject IHttpClientFactory ClientFactory
 
-<style>
+@* Felt superfluous to create a new folder/css file for one class *@
+<style>     
     .space {
         padding-top: 30px;
     }
@@ -19,13 +20,13 @@
 
 <p>Please enter the vehicle registration number you wish to check and press submit.</p>
 
-<div class="space">
-    Registration Number:
-    <input type="text" id="txtRegNum" @bind="_txtRegNum" />
-    <button id=" submit" @onclick="Submit" class="btn btn-primary">Submit</button>
-</div>
+<EditForm Model="Model" OnValidSubmit="Submit">
+    <InputText id="name" @bind-Value="Model.Registration" />
 
-@if (Model.Registration != null)
+    <button type="submit">Submit</button>
+</EditForm>
+
+@if (Model.Make != null)
 {
     <div class="space">
         <table class="table">
@@ -66,14 +67,10 @@
 
     private async Task Submit()
     {
-        // reset variables so previous searches dont interfere with new ones
-        Model = new Vehicle();
         ErrorMessage = string.Empty;
 
-        _txtRegNum = _txtRegNum.Replace(" ", "");
-
         var request = new HttpRequestMessage(HttpMethod.Get,
-           "https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=" + _txtRegNum);
+           "https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=" + Model.Registration!.Replace(" ", ""));
         request.Headers.Add("Accept", "application/json");
         request.Headers.Add("x-api-key", "fZi8YcjrZN1cGkQeZP7Uaa4rTxua8HovaswPuIno");
 
@@ -81,7 +78,7 @@
         var response = client.Send(request);
 
 
-        if (response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)   // Record found
         {
             var contentStream = await response.Content.ReadAsStreamAsync();
             var JsonResults = await JsonSerializer.DeserializeAsync<List<Vehicle>>(contentStream,
@@ -97,8 +94,9 @@
             }
 
         }
-        else if (response.StatusCode == HttpStatusCode.NotFound)
+        else if (response.StatusCode == HttpStatusCode.NotFound)    // Record not found
         {
+            Model = new Vehicle();  // Error occured, clear previous record from screen 
             ErrorMessage = "Registration number not found, please check and try again.";
         }
 
