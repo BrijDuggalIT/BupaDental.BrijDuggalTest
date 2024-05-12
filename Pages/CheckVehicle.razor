@@ -6,6 +6,7 @@
 
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using System.Net
 @inject IHttpClientFactory ClientFactory
 
 <style>
@@ -50,22 +51,31 @@
     </div>
 }
 
-@code {
-    private Vehicle? ResultVehicle = new Vehicle();
-    public Vehicle Model = new Vehicle();
-    private string _txtRegNum = string.Empty;
+@if (ErrorMessage != string.Empty)
+{
+    <div class="space">
+        @ErrorMessage
+    </div>
+}
 
-    private string regNumber = string.Empty;
+
+@code {
+    private string _txtRegNum = string.Empty;
+    private string ErrorMessage = string.Empty;
+    public Vehicle Model = new Vehicle();
 
     private async Task Submit()
     {
+        // reset variables so previous searches dont interfere with new ones
+        Model = new Vehicle();
+        ErrorMessage = string.Empty;
+
         _txtRegNum = _txtRegNum.Replace(" ", "");
 
         var request = new HttpRequestMessage(HttpMethod.Get,
            "https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=" + _txtRegNum);
         request.Headers.Add("Accept", "application/json");
         request.Headers.Add("x-api-key", "fZi8YcjrZN1cGkQeZP7Uaa4rTxua8HovaswPuIno");
-
 
         var client = ClientFactory.CreateClient();
         var response = client.Send(request);
@@ -79,12 +89,17 @@
 
             Model = JsonResults![0];
 
+            // If vehicle has MOT's fetch expiry date and mileage from there 
             if (Model.MotTests.Any())
             {
                 Model.MotTestExpiryDate = Convert.ToDateTime(Model.MotTests.First().ExpiryDate);
                 Model.MileageOnLastMot = Model.MotTests.First().OdometerValue;
             }
 
+        }
+        else if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            ErrorMessage = "Registration number not found, please check and try again.";
         }
 
     }
