@@ -1,0 +1,92 @@
+﻿@page "/checkvehicle"
+
+<PageTitle>Check vehicle</PageTitle>
+
+@using BupaDental.BrijDuggalTest.Data
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IHttpClientFactory ClientFactory
+
+<style>
+    .space {
+        padding-top: 30px;
+    }
+</style>
+
+<h1>Check vehicle details</h1>
+
+<p>Please enter the vehicle registration number you wish to check and press submit.</p>
+
+<div class="space">
+    Registration Number:
+    <input type="text" id="txtRegNum" @bind="_txtRegNum" />
+    <button id=" submit" @onclick="Submit" class="btn btn-primary">Submit</button>
+</div>
+
+@if (Model.Registration != null)
+{
+    <div class="space">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Make</th>
+                    <th>Model</th>
+                    <th>Colour</th>
+                    <th>MOT Expiry Date</th>
+                    <th>Mileage at last MOT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@Model.Make</td>
+                    <td>@Model.Model</td>
+                    <td>@Model.PrimaryColour</td>
+                    <td>@Model.MotTestExpiryDate!.Value.Date.ToShortDateString()</td>
+                    <td>@Model.MileageOnLastMot</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private Vehicle? ResultVehicle = new Vehicle();
+    public Vehicle Model = new Vehicle();
+    private string _txtRegNum = string.Empty;
+
+    private string regNumber = string.Empty;
+
+    private async Task Submit()
+    {
+        _txtRegNum = _txtRegNum.Replace(" ", "");
+
+        var request = new HttpRequestMessage(HttpMethod.Get,
+           "https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=" + _txtRegNum);
+        request.Headers.Add("Accept", "application/json");
+        request.Headers.Add("x-api-key", "fZi8YcjrZN1cGkQeZP7Uaa4rTxua8HovaswPuIno");
+
+
+        var client = ClientFactory.CreateClient();
+        var response = client.Send(request);
+
+
+        if (response.IsSuccessStatusCode)
+        {
+            var contentStream = await response.Content.ReadAsStreamAsync();
+            var JsonResults = await JsonSerializer.DeserializeAsync<List<Vehicle>>(contentStream,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Model = JsonResults![0];
+
+            if (Model.MotTests.Any())
+            {
+                Model.MotTestExpiryDate = Convert.ToDateTime(Model.MotTests.First().ExpiryDate);
+                Model.MileageOnLastMot = Model.MotTests.First().OdometerValue;
+            }
+
+        }
+
+    }
+
+}
