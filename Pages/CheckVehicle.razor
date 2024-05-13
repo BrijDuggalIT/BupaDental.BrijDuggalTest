@@ -69,6 +69,7 @@
     {
         ErrorMessage = string.Empty;
 
+        // Ideally this would have been in a seperate VehicleService file in data to make it reusable
         var request = new HttpRequestMessage(HttpMethod.Get,
            "https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=" + Model.Registration!.Replace(" ", ""));
         request.Headers.Add("Accept", "application/json");
